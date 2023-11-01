@@ -7,3 +7,7 @@
 *.suo
 /SampleServer/.vs/SampleServer/FileContentIndex
 /.vs
+/.vscode
+/consoleApp/SampleServer/.vs/SampleServer/v17
+/consoleApp/SampleServer/packages
+/consoleApp/SampleServer/.vs/SampleServer/FileContentIndex
