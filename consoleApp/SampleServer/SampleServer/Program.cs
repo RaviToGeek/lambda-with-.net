@@ -12,6 +12,8 @@ using Newtonsoft.Json;
 using RandomNameGeneratorLibrary;
 using Amazon;
 using System.Net;
+using Amazon.Runtime.CredentialManagement;
+using Amazon.Runtime;
 
 namespace SampleServer
 {
@@ -25,6 +27,7 @@ namespace SampleServer
     }
     class Program
     {
+        const string local_aws_profile = "admin";
         const string unique = "rbhalala";
         const string QUEUE_SSM_PARAMETER_NAME = "/monolith/policyQueueUrl" + unique;
         static PersonNameGenerator personGenerator = new PersonNameGenerator();
@@ -34,15 +37,25 @@ namespace SampleServer
 
         static void Main(string[] args)
         {
-            var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("AKIASWJ7OWQ2PS5PUUCI", "XoDBKeA7G43MDvARSm2/m+fEIsRWwCvVwtQciAur");
-            var queueUrlParam = new AmazonSimpleSystemsManagementClient(awsCredentials,RegionEndpoint.USEast1)
-                .GetParameter(new GetParameterRequest
+            var chain = new CredentialProfileStoreChain();
+            AWSCredentials awsCredentials;
+            if (chain.TryGetAWSCredentials(local_aws_profile, out awsCredentials))
+            {
+                // Use awsCredentials to create an Amazon S3 service client
+                using (var queueUrlParam = new AmazonSimpleSystemsManagementClient(awsCredentials, RegionEndpoint.USEast1))
                 {
-                    Name = QUEUE_SSM_PARAMETER_NAME
-                });
-            queueUrl = queueUrlParam.Parameter.Value;
-            Console.WriteLine($"Using queue URL: {queueUrlParam.Parameter.Value}");
-            queue = new AmazonSQSClient();
+                    var response = queueUrlParam.GetParameter(new GetParameterRequest
+                    {
+                        Name = QUEUE_SSM_PARAMETER_NAME
+                    });
+                    queueUrl = response.Parameter.Value;
+                    Console.WriteLine($"Using queue URL: {response.Parameter.Value}");
+                }
+
+                queue = new AmazonSQSClient(awsCredentials, RegionEndpoint.USEast1);
+            }
+            
+            
 
             using (var nancyHost = new NancyHost(new Uri("http://localhost:8888/")))
             {
